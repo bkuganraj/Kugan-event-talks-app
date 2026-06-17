@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Reader & Tweet Composer</title>
+    
+    <!-- Google Fonts: Inter & JetBrains Mono for code blocks -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Link to custom stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app-layout">
+        
+        <!-- Sidebar Tracker for Tweeting -->
+        <aside class="tweet-sidebar" id="tweetSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-icon">
+                    <i class="fa-brands fa-x-twitter"></i>
+                </div>
+                <h3>Tweet Composer</h3>
+            </div>
+            
+            <div class="sidebar-content" id="sidebarComposerContent">
+                <div class="empty-state" id="sidebarEmptyState">
+                    <div class="empty-icon-wrap">
+                        <i class="fa-regular fa-comment-dots"></i>
+                    </div>
+                    <p>Select a release note from the feed to compose a tweet.</p>
+                </div>
+                
+                <div class="composer-active hidden" id="sidebarActiveComposer">
+                    <div class="selected-note-preview">
+                        <span class="preview-label">Selected Update</span>
+                        <h4 id="composerSelectedTitle">BigQuery ML support for custom models</h4>
+                    </div>
+                    
+                    <div class="textarea-container">
+                        <textarea id="tweetTextarea" placeholder="What's happening? Compose your tweet here..." rows="6"></textarea>
+                        <div class="textarea-actions">
+                            <span class="char-counter" id="charCounter">0 / 280</span>
+                            <button class="btn-clear-textarea" id="btnResetComposer" title="Reset to default text">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="composer-suggestions">
+                        <span class="section-title">Add Hashtags:</span>
+                        <div class="hashtag-pills">
+                            <span class="hashtag-pill" data-tag="#BigQuery">#BigQuery</span>
+                            <span class="hashtag-pill" data-tag="#GCP">#GCP</span>
+                            <span class="hashtag-pill" data-tag="#GoogleCloud">#GoogleCloud</span>
+                            <span class="hashtag-pill" data-tag="#DataAnalytics">#DataAnalytics</span>
+                            <span class="hashtag-pill" data-tag="#SQL">#SQL</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-tweet" id="btnLaunchTweet">
+                        <i class="fa-brands fa-x-twitter"></i> Post on X
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Feed Panel -->
+        <main class="main-content">
+            <!-- App Header -->
+            <header class="app-header">
+                <div class="brand-info">
+                    <div class="bq-logo-icon">
+                        <i class="fa-solid fa-database"></i>
+                        <div class="gcp-colors">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div>
+                        <h1>BigQuery Releases</h1>
+                        <p class="subtitle">Stay updated with the latest Google BigQuery release notes and share key updates instantly.</p>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="btn-refresh" id="btnRefresh" title="Refresh Release Notes">
+                        <span class="btn-refresh-text">Refresh Feed</span>
+                        <i class="fa-solid fa-arrows-rotate refresh-spinner" id="refreshSpinner"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Search and Filter Bar -->
+            <section class="controls-section">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search title, description, SQL syntax, or features...">
+                    <button class="clear-search hidden" id="btnClearSearch">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <div class="filter-categories" id="categoriesContainer">
+                    <button class="filter-pill active" data-category="all">All Updates</button>
+                    <button class="filter-pill" data-category="feature">Features</button>
+                    <button class="filter-pill" data-category="change">Changes</button>
+                    <button class="filter-pill" data-category="deprecation">Deprecations</button>
+                    <button class="filter-pill" data-category="fix">Fixes</button>
+                </div>
+            </section>
+
+            <!-- Feed Status / Stats Bar -->
+            <div class="feed-status-bar">
+                <div class="status-left">
+                    <span id="releasesCount">Showing 0 updates</span>
+                </div>
+                <div class="status-right" id="lastUpdatedContainer">
+                    <span id="lastUpdatedText">Feed last updated: --</span>
+                </div>
+            </div>
+
+            <!-- Releases Grid / List -->
+            <section class="feed-section" id="feedSection">
+                <!-- Skeleton Loader Cards (Visible initially or during refresh) -->
+                <div class="skeleton-container" id="skeletonLoader">
+                    <div class="skeleton-card">
+                        <div class="skeleton-header">
+                            <div class="skeleton-meta"></div>
+                            <div class="skeleton-title"></div>
+                        </div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-header">
+                            <div class="skeleton-meta"></div>
+                            <div class="skeleton-title"></div>
+                        </div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-header">
+                            <div class="skeleton-meta"></div>
+                            <div class="skeleton-title"></div>
+                        </div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-feed hidden" id="emptyFeedState">
+                    <i class="fa-solid fa-filter-circle-xmark"></i>
+                    <h3>No releases found</h3>
+                    <p>Try refining your search terms or choosing a different filter category.</p>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-state hidden" id="errorFeedState">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <h3>Failed to fetch releases</h3>
+                    <p id="errorText">An unknown error occurred while retrieving release notes from the Google API.</p>
+                    <button class="btn-retry" id="btnRetry">
+                        <i class="fa-solid fa-arrows-rotate"></i> Try Again
+                    </button>
+                </div>
+
+                <!-- Feed Content Cards -->
+                <div class="releases-grid" id="releasesGrid">
+                    <!-- Javascript will inject release-cards here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Side Drawer for Full Release Details -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="detail-drawer" id="detailDrawer">
+        <div class="drawer-header">
+            <div class="drawer-meta">
+                <span class="drawer-date" id="drawerDate">June 15, 2026</span>
+                <div class="drawer-tags" id="drawerTags"></div>
+            </div>
+            <button class="btn-close-drawer" id="btnCloseDrawer" title="Close details">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        
+        <div class="drawer-content">
+            <h2 class="drawer-title" id="drawerTitle">BigQuery ML support for custom models</h2>
+            
+            <div class="drawer-actions">
+                <button class="btn-select-for-tweet" id="drawerTweetBtn">
+                    <i class="fa-brands fa-x-twitter"></i> Tweet This Update
+                </button>
+                <a href="#" target="_blank" class="btn-source-link" id="drawerSourceLink">
+                    View in Google Docs <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+            </div>
+            
+            <div class="drawer-body-content" id="drawerBody">
+                <!-- Parsed html content here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Mobile Tweet Button (Only visible on small viewports when a card is selected) -->
+    <div class="mobile-tweet-bar hidden" id="mobileTweetBar">
+        <div class="mobile-bar-info">
+            <span class="mobile-selected-title" id="mobileSelectedTitle">Selected 1 Update</span>
+        </div>
+        <button class="btn-mobile-composer-trigger" id="btnMobileComposerTrigger">
+            <i class="fa-brands fa-x-twitter"></i> Compose
+        </button>
+    </div>
+
+    <!-- Inline toast notification system -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
