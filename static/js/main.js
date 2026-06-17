@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         btnRefresh: document.getElementById('btnRefresh'),
         refreshSpinner: document.getElementById('refreshSpinner'),
+        btnExport: document.getElementById('btnExport'),
+        themeCheckbox: document.getElementById('themeCheckbox'),
         
         searchInput: document.getElementById('searchInput'),
         btnClearSearch: document.getElementById('btnClearSearch'),
@@ -250,9 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-read-more" data-action="read">
                         Read Details <i class="fa-solid fa-arrow-right"></i>
                     </button>
-                    <button class="btn-card-tweet" data-action="tweet">
-                        <i class="fa-brands fa-x-twitter"></i> Tweet
-                    </button>
+                    <div class="card-actions-wrapper">
+                        <button class="btn-card-copy" data-action="copy" title="Copy to clipboard">
+                            <i class="fa-regular fa-copy"></i> Copy
+                        </button>
+                        <button class="btn-card-tweet" data-action="tweet">
+                            <i class="fa-brands fa-x-twitter"></i> Tweet
+                        </button>
+                    </div>
                 </div>
             `;
             
@@ -272,6 +279,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (window.innerWidth <= 1024) {
                         elements.tweetSidebar.scrollIntoView({ behavior: 'smooth' });
                     }
+                } else if (actionBtn && actionBtn.dataset.action === 'copy') {
+                    e.stopPropagation();
+                    const copyText = `BigQuery Update [${release.published}]:\n${release.title}\n\n${release.excerpt}\n\nRead more: ${release.link}`;
+                    navigator.clipboard.writeText(copyText)
+                        .then(() => showToast('Update copied to clipboard!', 'success'))
+                        .catch(() => showToast('Failed to copy to clipboard', 'error'));
                 } else {
                     // Open drawer
                     openDrawer(release);
@@ -537,6 +550,71 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.btnMobileComposerTrigger.addEventListener('click', () => {
         elements.tweetSidebar.scrollIntoView({ behavior: 'smooth' });
     });
+
+    // Export to CSV click listener
+    elements.btnExport.addEventListener('click', () => {
+        if (filteredReleases.length === 0) {
+            showToast('No releases available to export', 'error');
+            return;
+        }
+        
+        try {
+            const headers = ['ID', 'Date', 'Category', 'Title', 'Link', 'Excerpt'];
+            const csvRows = [headers.join(',')];
+            
+            filteredReleases.forEach(release => {
+                const row = [
+                    `"${release.id.replace(/"/g, '""')}"`,
+                    `"${release.published.replace(/"/g, '""')}"`,
+                    `"${release.categories.join('; ').replace(/"/g, '""')}"`,
+                    `"${release.title.replace(/"/g, '""')}"`,
+                    `"${release.link.replace(/"/g, '""')}"`,
+                    `"${release.excerpt.slice(0, 250).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ')}"`
+                ];
+                csvRows.push(row.join(','));
+            });
+            
+            const csvContent = "\ufeff" + csvRows.join('\n'); // UTF-8 BOM
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'bigquery_release_notes.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('Exported CSV file successfully!', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast('Failed to export CSV', 'error');
+        }
+    });
+
+    // Theme toggle functionality
+    elements.themeCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            document.body.classList.add('light-theme');
+            localStorage.setItem('theme', 'light');
+            showToast('Switched to Light theme', 'info');
+        } else {
+            document.body.classList.remove('light-theme');
+            localStorage.setItem('theme', 'dark');
+            showToast('Switched to Dark theme', 'info');
+        }
+    });
+
+    // Load saved theme on startup
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        elements.themeCheckbox.checked = true;
+        document.body.classList.add('light-theme');
+    } else {
+        elements.themeCheckbox.checked = false;
+        document.body.classList.remove('light-theme');
+    }
 
     /* ==========================================================================
        START APPLICATION

@@ -92,6 +92,24 @@
                 </div>
                 
                 <div class="header-actions">
+                    <!-- Theme Toggle Switch -->
+                    <div class="theme-switch-wrapper">
+                        <label class="theme-switch" for="themeCheckbox">
+                            <input type="checkbox" id="themeCheckbox">
+                            <span class="slider round">
+                                <i class="fa-solid fa-moon icon-moon"></i>
+                                <i class="fa-solid fa-sun icon-sun"></i>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Export CSV Button -->
+                    <button class="btn-export" id="btnExport" title="Export current filtered list to CSV">
+                        <i class="fa-solid fa-file-csv"></i>
+                        <span class="btn-export-text">Export CSV</span>
+                    </button>
+
+                    <!-- Refresh Button -->
                     <button class="btn-refresh" id="btnRefresh" title="Refresh Release Notes">
                         <span class="btn-refresh-text">Refresh Feed</span>
                         <i class="fa-solid fa-arrows-rotate refresh-spinner" id="refreshSpinner"></i>
